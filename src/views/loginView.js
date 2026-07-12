@@ -43,6 +43,9 @@ function markup(mode) {
   const copy = COPY[mode];
   return `
     <main class="auth-screen">
+      <span class="auth-ball-decoration auth-ball-decoration--one" aria-hidden="true"></span>
+      <span class="auth-ball-decoration auth-ball-decoration--two" aria-hidden="true"></span>
+
       <div class="auth-backdrop" aria-hidden="true">
         ${decorativeBackdropHtml()}
       </div>
@@ -52,7 +55,7 @@ function markup(mode) {
           <div class="auth-brand">
             <span class="auth-brand__logo">${ICONS.trophy}</span>
             <div>
-              <strong>Mundial 26 Suite</strong>
+              <strong>Mundial 26 Suite <span class="auth-brand__ball" aria-hidden="true">⚽</span></strong>
               <small>ISW-521 · Programación Web I</small>
             </div>
           </div>
@@ -207,8 +210,10 @@ function wireForm(container, mode, authService, navigateTo, rerender) {
 
 /**
  * Pequeña animación de éxito antes de entrar al dashboard: el botón se
- * pone verde con un check, y la tarjeta completa hace un pulso suave.
- * Es solo estético — la navegación real ocurre después con await.
+ * pone verde con un check, la tarjeta completa hace un pulso suave, y
+ * sale un estallido de confetti (generado con CSS/JS, sin usar ninguna
+ * imagen) desde el botón. Es solo estético — la navegación real ocurre
+ * después con await.
  */
 function playSuccessAnimation({ authCard, submitButton, submitLabelEl, submitArrowEl }) {
   return new Promise((resolve) => {
@@ -216,6 +221,30 @@ function playSuccessAnimation({ authCard, submitButton, submitLabelEl, submitArr
     submitLabelEl.textContent = '¡Listo!';
     submitArrowEl.innerHTML = ICONS.check;
     authCard.classList.add('auth-card--success');
-    setTimeout(resolve, 550);
+    spawnConfetti(submitButton);
+    setTimeout(resolve, 650);
   });
+}
+
+/** Genera un puñado de puntos de color que salen disparados y se desvanecen. */
+function spawnConfetti(anchorEl) {
+  const colors = ['#22c55e', '#38bdf8', '#eab308', '#fb923c', '#a855f7'];
+  const burst = document.createElement('div');
+  burst.className = 'confetti-burst';
+
+  for (let i = 0; i < 18; i += 1) {
+    const dot = document.createElement('span');
+    dot.className = 'confetti-dot';
+    const angle = (360 / 18) * i + (Math.random() * 18 - 9);
+    const distance = 55 + Math.random() * 45;
+    const radians = (angle * Math.PI) / 180;
+    dot.style.setProperty('--dx', `${Math.cos(radians) * distance}px`);
+    dot.style.setProperty('--dy', `${Math.sin(radians) * distance}px`);
+    dot.style.background = colors[i % colors.length];
+    dot.style.animationDelay = `${Math.random() * 0.08}s`;
+    burst.appendChild(dot);
+  }
+
+  anchorEl.appendChild(burst);
+  setTimeout(() => burst.remove(), 900);
 }

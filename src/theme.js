@@ -14,14 +14,14 @@ export const PROJECT_THEME = {
   },
   '#/head-to-head': {
     label: 'Buscador Cara a Cara',
-    description: 'Compará dos equipos en paralelo con autocompletado y Promise.all.',
+    description: 'Elegí dos equipos y compará su grupo, sus puntos y el partido entre ellos.',
     icon: '🔍',
     color: '#38bdf8',
     soft: 'rgba(56, 189, 248, 0.16)',
   },
   '#/surprise-tracker': {
     label: 'Seguidor de Sorpresas',
-    description: 'Polling periódico que avisa cuando tu equipo favorito va perdiendo.',
+    description: 'Seguimiento en vivo que avisa cuando tu equipo favorito va perdiendo.',
     icon: '🚨',
     color: '#fb923c',
     soft: 'rgba(251, 146, 60, 0.16)',
@@ -35,7 +35,7 @@ export const PROJECT_THEME = {
   },
   '#/draw': {
     label: 'Simulador de Sorteo Loco',
-    description: 'Fisher-Yates sobre los 48 equipos reales, en 12 grupos ficticios.',
+    description: 'Sorteá al azar los 48 equipos reales en 12 grupos ficticios.',
     icon: '🎲',
     color: '#a855f7',
     soft: 'rgba(168, 85, 247, 0.16)',

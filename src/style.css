@@ -42,7 +42,14 @@
 body {
   margin: 0;
   font-family: var(--font-sans);
-  background: radial-gradient(circle at 50% 0%, #f7f9fc, var(--color-bg) 55%);
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='130'%3E%3Ccircle cx='65' cy='65' r='15' fill='none' stroke='%2322c55e' stroke-width='2.2' opacity='0.07'/%3E%3Cpath d='M65 53 L72 58 L69 67 L61 67 L58 58 Z' fill='%2322c55e' opacity='0.07'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cpath d='M68 40 C68 50 71 56 75 56 C79 56 82 50 82 40 Z' fill='%230ea5e9' opacity='0.07'/%3E%3Crect x='72' y='56' width='6' height='8' fill='%230ea5e9' opacity='0.07'/%3E%3Crect x='68' y='64' width='14' height='3.5' rx='1' fill='%230ea5e9' opacity='0.07'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cpath d='M50 15 L54 30 L69 30 L57 39 L61 54 L50 45 L39 54 L43 39 L31 30 L46 30 Z' fill='%23a855f7' opacity='0.06'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cpath d='M50 55 L54 70 L69 70 L57 79 L61 94 L50 85 L39 94 L43 79 L31 70 L46 70 Z' fill='%2338bdf8' opacity='0.06'/%3E%3C/svg%3E"),
+    radial-gradient(circle at 50% 0%, #f7f9fc, var(--color-bg) 55%);
+  background-size: 130px 130px, 150px 150px, 100px 100px, 100px 100px, auto;
+  background-position: 20px 30px, 110px 90px, 0 0, 50px 50px, 0 0;
   background-attachment: fixed;
   color: var(--color-text);
   min-height: 100vh;
@@ -194,8 +201,80 @@ button {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: var(--color-bg);
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Ccircle cx='45' cy='45' r='15' fill='none' stroke='%2322c55e' stroke-width='2.2' opacity='0.13'/%3E%3Cpath d='M45 33 L52 38 L49 47 L41 47 L38 38 Z' fill='%2322c55e' opacity='0.13'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cpath d='M38 20 C38 30 41 36 45 36 C49 36 52 30 52 20 Z' fill='%230ea5e9' opacity='0.13'/%3E%3Crect x='42' y='36' width='6' height='8' fill='%230ea5e9' opacity='0.13'/%3E%3Crect x='38' y='44' width='14' height='3.5' rx='1' fill='%230ea5e9' opacity='0.13'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70'%3E%3Cpath d='M35 8 L40 27 L59 27 L44 39 L49 58 L35 46 L21 58 L26 39 L11 27 L30 27 Z' fill='%23a855f7' opacity='0.10'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70'%3E%3Cpath d='M35 43 L40 62 L59 62 L44 74 L49 93 L35 81 L21 93 L26 74 L11 62 L30 62 Z' fill='%2338bdf8' opacity='0.10'/%3E%3C/svg%3E"),
+    radial-gradient(circle, rgba(34, 197, 94, 0.16) 3px, transparent 3px),
+    radial-gradient(circle, rgba(251, 146, 60, 0.16) 3px, transparent 3px),
+    radial-gradient(circle, rgba(234, 179, 8, 0.16) 3px, transparent 3px),
+    radial-gradient(circle, rgba(239, 68, 68, 0.14) 2.5px, transparent 2.5px),
+    var(--color-bg);
+  background-size: 130px 130px, 150px 150px, 70px 70px, 70px 70px, 46px 46px, 46px 46px, 46px 46px, 46px 46px, auto;
+  background-position: 12px 18px, 90px 70px, 0 0, 35px 35px, 0 0, 23px 23px, 11px 34px, 34px 8px, 0 0;
   animation: fadeInUp 0.4s ease both;
+}
+
+/* Balones decorativos: un degradado cónico con nuestros colores de tema,
+   recortado en círculo y girando despacio — la idea de "balón colorido"
+   pero 100% original (ni banderas ni ninguna imagen de archivo). */
+.auth-ball-decoration {
+  position: absolute;
+  border-radius: 50%;
+  background: conic-gradient(
+    #22c55e 0deg 51deg,
+    #38bdf8 51deg 103deg,
+    #eab308 103deg 154deg,
+    #fb923c 154deg 206deg,
+    #a855f7 206deg 257deg,
+    #ef4444 257deg 309deg,
+    #22c55e 309deg 360deg
+  );
+  opacity: 0.16;
+  pointer-events: none;
+  animation: authBallSpin 34s linear infinite;
+}
+
+.auth-ball-decoration--one {
+  width: 15rem;
+  height: 15rem;
+  top: -4rem;
+  right: -4rem;
+}
+
+.auth-ball-decoration--two {
+  width: 11rem;
+  height: 11rem;
+  bottom: -3rem;
+  left: -3rem;
+  animation-duration: 26s;
+  animation-direction: reverse;
+}
+
+@keyframes authBallSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.auth-brand__ball {
+  display: inline-block;
+  font-size: 1.1rem;
+  animation: authBallBounce 2.4s ease-in-out infinite;
+}
+
+@keyframes authBallBounce {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(180deg);
+  }
 }
 
 /*
@@ -273,18 +352,18 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  width: 3.75rem;
+  height: 3.75rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #38bdf8, #0284c7);
   color: #ffffff;
   flex-shrink: 0;
 }
 
 .auth-brand__logo svg,
 .app-sidebar__logo svg {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 2.15rem;
+  height: 2.15rem;
   display: block;
 }
 
@@ -353,7 +432,7 @@ button {
 }
 
 .field-icon--lock {
-  background: #f59e0b;
+  background: #0ea5e9;
 }
 
 .plain-input {
@@ -434,7 +513,36 @@ button {
   border-color: var(--color-primary-dark) !important;
 }
 
+.confetti-burst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.confetti-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  animation: confettiFly 0.75s ease-out forwards;
+}
+
+@keyframes confettiFly {
+  0% {
+    transform: translate(-50%, -50%) translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) rotate(280deg);
+    opacity: 0;
+  }
+}
+
 .btn-block {
+  position: relative;
   width: 100%;
   display: flex;
   align-items: center;
@@ -444,15 +552,15 @@ button {
 }
 
 .btn-brand {
-  background: linear-gradient(135deg, #fbbf24, #f59e0b 70%);
-  border-color: #b45309;
-  color: #241a00;
+  background: linear-gradient(135deg, #38bdf8, #0284c7 70%);
+  border-color: #075985;
+  color: #ffffff;
   font-weight: 700;
-  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
 }
 
 .btn-brand:hover {
-  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.45);
+  box-shadow: 0 6px 18px rgba(2, 132, 199, 0.5);
 }
 
 .auth-switch {
@@ -1049,6 +1157,33 @@ button {
 
 .selected-row__name {
   flex: 1;
+}
+
+.prediction-row__text {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.prediction-row__delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  line-height: 1;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.prediction-row__delete:hover {
+  color: #ffffff;
+  background: var(--color-danger);
+  border-color: var(--color-danger);
 }
 
 .selected-row__goals {

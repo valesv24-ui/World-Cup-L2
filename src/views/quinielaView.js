@@ -51,6 +51,23 @@ export async function renderQuinielaView(container, { worldCupApi }) {
     }
   });
 
+  /** Borra UNA sola predicción (no todas), y refresca las listas afectadas. */
+  function deletePrediction(matchId) {
+    delete predictions[matchId];
+    savePredictions(predictions);
+    renderResolvedFromStorageOnly();
+    if (latestGames.length > 0) {
+      renderPendingMatches(latestGames);
+      renderResolvedComparisons(latestGames);
+    }
+  }
+
+  function wireDeleteButtons() {
+    resolvedListEl.querySelectorAll('[data-delete]').forEach((button) => {
+      button.addEventListener('click', () => deletePrediction(button.dataset.delete));
+    });
+  }
+
   function renderResolvedFromStorageOnly() {
     const entries = Object.entries(predictions);
     resolvedListEl.innerHTML =
@@ -60,12 +77,14 @@ export async function renderQuinielaView(container, { worldCupApi }) {
             .map(
               ([matchId, prediction]) => `
                 <li class="prediction-row" data-match="${matchId}">
-                  Partido #${matchId}: predicción ${prediction.home}-${prediction.away}
+                  <span class="prediction-row__text">Partido #${matchId}: predicción ${prediction.home}-${prediction.away}</span>
                   <span class="badge">cargando resultado real…</span>
+                  <button type="button" class="prediction-row__delete" data-delete="${matchId}" aria-label="Eliminar esta predicción" title="Eliminar esta predicción">✕</button>
                 </li>
               `
             )
             .join('');
+    wireDeleteButtons();
   }
 
   function renderPendingMatches(games) {
@@ -116,8 +135,13 @@ export async function renderQuinielaView(container, { worldCupApi }) {
             .map(([matchId, prediction]) => {
               const game = finishedById.get(matchId);
               if (!game) {
-                return `<li class="prediction-row">Partido #${matchId}: predicción ${prediction.home}-${prediction.away}
-                  <span class="badge">aún no finaliza</span></li>`;
+                return `
+                  <li class="prediction-row">
+                    <span class="prediction-row__text">Partido #${matchId}: predicción ${prediction.home}-${prediction.away}</span>
+                    <span class="badge">aún no finaliza</span>
+                    <button type="button" class="prediction-row__delete" data-delete="${matchId}" aria-label="Eliminar esta predicción" title="Eliminar esta predicción">✕</button>
+                  </li>
+                `;
               }
               const actualHome = Number(game.home_score);
               const actualAway = Number(game.away_score);
@@ -125,13 +149,17 @@ export async function renderQuinielaView(container, { worldCupApi }) {
 
               return `
                 <li class="prediction-row">
-                  ${escapeHtml(game.home_team_name_en)} ${actualHome}-${actualAway} ${escapeHtml(game.away_team_name_en)}
-                  — predicción: ${prediction.home}-${prediction.away}
+                  <span class="prediction-row__text">
+                    ${escapeHtml(game.home_team_name_en)} ${actualHome}-${actualAway} ${escapeHtml(game.away_team_name_en)}
+                    — predicción: ${prediction.home}-${prediction.away}
+                  </span>
                   <span class="badge badge--${outcome.className}">${outcome.label}</span>
+                  <button type="button" class="prediction-row__delete" data-delete="${matchId}" aria-label="Eliminar esta predicción" title="Eliminar esta predicción">✕</button>
                 </li>
               `;
             })
             .join('');
+    wireDeleteButtons();
   }
 }
 
