@@ -11,6 +11,7 @@
 // visibles al mismo tiempo.
 
 import { ICONS } from '../components/icons.js';
+import { mountA11yControl } from '../components/a11yPanel.js';
 
 const COPY = {
   login: {
@@ -35,6 +36,7 @@ export async function renderLoginView(container, { authService, navigateTo }) {
   function mount(mode) {
     container.innerHTML = markup(mode);
     wireForm(container, mode, authService, navigateTo, mount);
+    mountA11yControl(container.querySelector('#a11y-slot'));
   }
   mount('login');
 }
@@ -43,6 +45,7 @@ function markup(mode) {
   const copy = COPY[mode];
   return `
     <main class="auth-screen">
+      <div id="a11y-slot" class="a11y-slot--login"></div>
       <span class="auth-ball-decoration auth-ball-decoration--one" aria-hidden="true"></span>
       <span class="auth-ball-decoration auth-ball-decoration--two" aria-hidden="true"></span>
 

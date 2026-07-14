@@ -9,10 +9,17 @@
 
 import { PROJECT_THEME, HOME_THEME } from '../theme.js';
 import { ICONS } from './icons.js';
+import { mountA11yControl } from './a11yPanel.js';
 
 const NAV_ITEMS = [
-  { hash: '#/menu', label: 'Inicio', icon: HOME_THEME.icon },
-  ...Object.entries(PROJECT_THEME).map(([hash, theme]) => ({ hash, label: theme.label, icon: theme.icon })),
+  { hash: '#/menu', label: 'Inicio', icon: HOME_THEME.icon, color: HOME_THEME.color, soft: HOME_THEME.soft },
+  ...Object.entries(PROJECT_THEME).map(([hash, theme]) => ({
+    hash,
+    label: theme.label,
+    icon: theme.icon,
+    color: theme.color,
+    soft: theme.soft,
+  })),
 ];
 
 let shellRefs = null;
@@ -32,13 +39,20 @@ export function mountAppShell(root, { authService, navigateTo }) {
         <nav class="app-topnav__tabs">
           ${NAV_ITEMS.map(
             (item) => `
-              <button type="button" class="nav-item" data-hash="${item.hash}">
+              <button
+                type="button"
+                class="nav-item"
+                data-hash="${item.hash}"
+                style="--nav-color: ${item.color}; --nav-color-soft: ${item.soft};"
+              >
                 <span class="nav-item__icon">${item.icon}</span>
                 <span class="nav-item__label">${item.label}</span>
               </button>
             `
           ).join('')}
         </nav>
+
+        <div id="a11y-slot"></div>
 
         <div class="profile-menu">
           <button
@@ -76,6 +90,8 @@ export function mountAppShell(root, { authService, navigateTo }) {
   navButtons.forEach((button) => {
     button.addEventListener('click', () => navigateTo(button.dataset.hash));
   });
+
+  mountA11yControl(root.querySelector('#a11y-slot'));
 
   function performLogout() {
     authService.logout();

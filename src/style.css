@@ -23,6 +23,70 @@
   --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
+/* Tema oscuro: mismas variables, otros valores. Se activa con la clase
+   .dark en <html> desde components/a11yPanel.js. Como toda la hoja de
+   estilos usa estas variables (y no colores sueltos), alcanza con
+   redefinirlas acá para que el resto de la app cambie sola. */
+html.dark {
+  --color-bg: #0f172a;
+  --color-surface: #1e293b;
+  --color-surface-alt: #273449;
+  --color-border: #334155;
+  --color-text: #e2e8f0;
+  --color-text-muted: #94a3b8;
+  --color-warning-text: #fbbf24;
+}
+
+/* Alto contraste (WCAG AAA, amarillo sobre negro) — pensado para
+   lectura, así que además de las variables se apagan los patrones
+   decorativos de baja opacidad, que solo restan legibilidad. */
+html.high-contrast {
+  --color-bg: #000000;
+  --color-surface: #000000;
+  --color-surface-alt: #1a1a1a;
+  --color-border: #ffff00;
+  --color-text: #ffff00;
+  --color-text-muted: #ffff00;
+  --color-primary: #ffff00;
+  --color-primary-dark: #cccc00;
+  --color-accent: #ffff00;
+  --color-accent-dark: #cccc00;
+  --color-danger: #ff5555;
+  --color-warning: #ffff00;
+  --color-warning-text: #ffff00;
+}
+
+html.high-contrast body {
+  background: #000000 !important;
+}
+
+html.high-contrast .auth-backdrop,
+html.high-contrast .auth-ball-decoration,
+html.high-contrast .content-panel::before {
+  display: none !important;
+}
+
+html.high-contrast .btn-primary,
+html.high-contrast .btn-secondary,
+html.high-contrast .btn-brand,
+html.high-contrast .app-avatar,
+html.high-contrast .auth-brand__logo,
+html.high-contrast .app-sidebar__logo {
+  background: #ffff00 !important;
+  color: #000000 !important;
+  border: 2px solid #ffff00 !important;
+  box-shadow: none !important;
+}
+
+html.high-contrast .auth-brand__logo svg,
+html.high-contrast .app-sidebar__logo svg {
+  color: #000000 !important;
+}
+
+html.high-contrast * {
+  text-shadow: none !important;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -237,17 +301,17 @@ button {
 }
 
 .auth-ball-decoration--one {
-  width: 15rem;
-  height: 15rem;
-  top: -4rem;
-  right: -4rem;
+  width: 14rem;
+  height: 14rem;
+  top: 2.5rem;
+  right: 3rem;
 }
 
 .auth-ball-decoration--two {
-  width: 11rem;
-  height: 11rem;
-  bottom: -3rem;
-  left: -3rem;
+  width: 10rem;
+  height: 10rem;
+  bottom: 2.5rem;
+  left: 3rem;
   animation-duration: 26s;
   animation-direction: reverse;
 }
@@ -673,22 +737,23 @@ button {
   border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
-  color: var(--color-text-muted);
+  color: var(--nav-color, var(--color-text-muted));
   font-size: 0.88rem;
+  font-weight: 600;
   white-space: nowrap;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .nav-item:hover {
-  background: var(--color-surface-alt);
-  color: var(--color-text);
+  background: var(--nav-color-soft, var(--color-surface-alt));
+  border-color: var(--nav-color, var(--color-border));
 }
 
 .nav-item--active {
-  background: var(--color-surface-alt);
-  border-color: var(--color-border);
-  color: var(--color-text);
-  font-weight: 700;
+  background: var(--nav-color-soft, var(--color-surface-alt));
+  border-color: var(--nav-color, var(--color-border));
+  color: var(--nav-color, var(--color-text));
+  font-weight: 800;
 }
 
 .nav-item__icon {
@@ -740,6 +805,107 @@ button {
 
 .profile-menu {
   position: relative;
+}
+
+.a11y-menu {
+  position: relative;
+}
+
+.a11y-slot--login {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 2;
+}
+
+.a11y-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 700;
+  font-size: 0.85rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.a11y-button:hover {
+  border-color: var(--color-accent);
+}
+
+.a11y-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 15rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(31, 36, 48, 0.16);
+  padding: 0.9rem;
+  z-index: 20;
+  animation: fadeInUp 0.15s ease both;
+}
+
+.a11y-dropdown__title {
+  margin: 0 0 0.65rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.a11y-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.a11y-row__buttons {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.a11y-mini-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.4rem;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  font-size: 0.8rem;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.a11y-mini-btn:hover {
+  border-color: var(--color-accent);
+}
+
+.a11y-mini-btn--active {
+  background: var(--color-accent);
+  border-color: var(--color-accent-dark);
+  color: #ffffff;
+}
+
+.a11y-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-text);
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-border);
 }
 
 .app-avatar {
@@ -821,9 +987,23 @@ button {
 }
 
 .content-panel {
+  position: relative;
   max-width: 72rem;
   margin: 0 auto;
   animation: fadeInUp 0.3s ease both;
+}
+
+.content-panel::before {
+  content: '';
+  position: absolute;
+  top: -2rem;
+  left: 50%;
+  width: 100vw;
+  height: 20rem;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse 50rem 20rem at 50% 0%, var(--accent-soft, transparent), transparent 70%);
+  pointer-events: none;
+  z-index: -1;
 }
 
 .menu-welcome {
@@ -1413,8 +1593,13 @@ button {
 }
 
 @media (max-width: 780px) {
-  .auth-backdrop {
+  .auth-backdrop,
+  .auth-ball-decoration {
     display: none;
+  }
+
+  .auth-screen {
+    background: var(--color-bg);
   }
 
   .auth-center {

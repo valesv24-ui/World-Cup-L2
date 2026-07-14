@@ -6,6 +6,7 @@ import { AuthService } from './api/authService.js';
 import { WorldCupApi } from './api/worldCupApi.js';
 import { showSessionExpiredModal } from './components/modal.js';
 import { updateRateLimitBanner } from './components/rateLimitBanner.js';
+import { initA11y } from './components/a11yPanel.js';
 import { registerRoute, setAppContext, startRouter, navigateTo } from './router.js';
 
 import { renderLoginView } from './views/loginView.js';
@@ -15,6 +16,10 @@ import { renderHeadToHeadView } from './views/headToHeadView.js';
 import { renderSurpriseTrackerView } from './views/surpriseTrackerView.js';
 import { renderQuinielaView } from './views/quinielaView.js';
 import { renderDrawView } from './views/drawView.js';
+
+// Aplica tema/tamaño de letra/contraste guardados ANTES de renderizar nada,
+// para que no haya un parpadeo del tema por defecto al cargar la página.
+initA11y();
 
 const client = new ApiClient({
   onSessionExpired: () => {

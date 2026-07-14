@@ -38,6 +38,7 @@ mundial26-suite/
     ├── components/
     │   ├── icons.js          # íconos SVG compartidos (Lucide, licencia ISC)
     │   ├── appShell.js       # menú horizontal + barra superior persistentes
+    │   ├── a11yPanel.js      # tema claro/oscuro, tamaño de letra, alto contraste
     │   ├── modal.js          # modal de "sesión expirada"
     │   ├── rateLimitBanner.js # countdown visible (429/500)
     │   └── staleBadge.js     # insignia "datos no actualizados"
@@ -83,7 +84,7 @@ mundial26-suite/
 | Dispositivo | Comportamiento |
 |---|---|
 | Escritorio (> 780px) | Menú horizontal completo con texto, grillas en varias columnas |
-| Tablet / Móvil (≤ 780px) | Menú se compacta a solo íconos, contenido en una columna, fondo decorativo del login se oculta |
+| Tablet / Móvil (≤ 780px) | Menú se compacta a solo íconos, contenido en una columna, todo el fondo decorativo del login (balones, patrón, vista previa borrosa) se oculta |
 
 ## 🎨 Sistema de diseño
 
@@ -100,7 +101,33 @@ Variables CSS en `:root` (`src/style.css`):
 Cada subproyecto tiene su propio color de acento (`⚽` verde, `🔍` azul, `🚨`
 naranja, `🎯` dorado, `🎲` morado — ver `theme.js`), y cada grupo real del
 Mundial (A-L) tiene un color fijo para identificar equipos del mismo grupo de
-un vistazo en el Buscador Cara a Cara.
+un vistazo en el Buscador Cara a Cara. Ese mismo color de acento tiñe
+suavemente el fondo de cada subproyecto (`--accent-soft`, en
+`.content-panel::before`), y un patrón decorativo (balones, estrellas,
+trofeo, dibujados en SVG/CSS, sin ninguna imagen externa) corre por debajo
+de toda la app. En el login, ese fondo incluye además dos balones giratorios
+y, al iniciar sesión con éxito, un pequeño estallido de confetti (también
+generado con CSS/JS, sin imágenes) antes de entrar al dashboard.
+
+## ♿ Accesibilidad
+
+Botón "Aa" en la barra superior (y también en el login, arriba a la
+derecha) que abre un panel con tres controles, todos persistentes en
+`localStorage` (`wc26_a11y_prefs`) — mismo patrón de Web Storage del
+Laboratorio #1, adaptado a este proyecto:
+
+- **Tamaño de letra** — 3 niveles (100% / 115% / 130%). Como toda la hoja
+  de estilos usa `rem`, cambiar el `font-size` de `<html>` escala
+  proporcionalmente toda la interfaz, no solo el texto.
+- **Tema claro / oscuro** — redefine las variables CSS de color en
+  `html.dark`; como el resto de la hoja de estilos ya usa esas variables
+  en vez de colores sueltos, el resto de la app cambia solo.
+- **Alto contraste** (WCAG AAA, amarillo sobre negro) — además de las
+  variables, apaga los patrones decorativos de baja opacidad, que solo
+  restan legibilidad.
+
+Las preferencias se aplican en `main.js` ANTES de renderizar nada
+(`initA11y()`), para que no haya parpadeo del tema por defecto al cargar.
 
 ## 🚀 Cómo ejecutar
 
