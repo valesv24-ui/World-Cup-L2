@@ -10,16 +10,15 @@
 // vista simplemente no toca el estado anterior.
 
 import { extractTeamsArray, extractGamesArray } from '../api/worldCupApi.js';
-import { isTrue } from '../utils/format.js';
+import { isTrue, escapeHtml } from '../utils/format.js';
 import { themeFor } from '../theme.js';
 
 const FAVORITES_KEY = 'wc26_favorite_teams';
 const DEFAULT_INTERVAL_MS = 15000;
 
-export async function renderSurpriseTrackerView(container, { worldCupApi }) {
+export async function renderSurpriseTrackerView(container, { worldCupApi, isStale }) {
   container.innerHTML = layout();
 
-  const favoriteIds = new Set(loadFavorites());
   /** @type {Map<string, { rivalName: string, teamScore: number, rivalScore: number, losing: boolean, finished: boolean }>} */
   const lastKnownState = new Map();
 
@@ -31,9 +30,28 @@ export async function renderSurpriseTrackerView(container, { worldCupApi }) {
   let allTeams = [];
   try {
     const { data } = await worldCupApi.getTeams();
+    // Si el usuario ya navegó a otra pantalla mientras esperábamos esta
+    // respuesta, este `container` ya no es el de esta vista (ver
+    // router.js) — no seguir tocando ese DOM ajeno, y no arrancar un
+    // polling nuevo que nadie va a poder detener desde afuera.
+    if (isStale()) return undefined;
     allTeams = extractTeamsArray(data);
   } catch (error) {
+    if (isStale()) return undefined;
     statusEl.textContent = `No se pudo cargar la lista de equipos: ${error.message}`;
+  }
+
+  // "Marcar como favorito" sigue siendo el mecanismo real (y se sigue
+  // guardando en localStorage), pero la primera vez que alguien entra
+  // —cuando todavía no hay nada guardado— se parte de "todos marcados"
+  // en vez de una lista vacía, para que el seguimiento se vea de
+  // inmediato sin tener que tildar equipo por equipo. Si el usuario
+  // limpia los favoritos a propósito (botón "Limpiar favoritos"), eso sí
+  // se respeta como una lista vacía real.
+  const savedFavorites = loadFavorites();
+  const favoriteIds = new Set(savedFavorites ?? allTeams.map((team) => team.id));
+  if (savedFavorites === null && favoriteIds.size > 0) {
+    saveFavorites([...favoriteIds]);
   }
 
   renderTeamChecklist();
@@ -86,12 +104,14 @@ export async function renderSurpriseTrackerView(container, { worldCupApi }) {
     }, intervalMs);
   }
 
-  container.querySelector('[data-action="start-polling"]').addEventListener('click', async () => {
+  async function startPolling() {
     if (pollingActive) return;
     pollingActive = true;
     await pollOnce();
     scheduleNextPoll();
-  });
+  }
+
+  container.querySelector('[data-action="start-polling"]').addEventListener('click', startPolling);
 
   container.querySelector('[data-action="stop-polling"]').addEventListener('click', () => {
     pollingActive = false;
@@ -107,12 +127,18 @@ export async function renderSurpriseTrackerView(container, { worldCupApi }) {
     renderTracker();
   });
 
+  // Arranca el seguimiento de inmediato (si hay al menos un favorito), en
+  // vez de obligar a un clic extra en "Iniciar polling" para ver algo.
+  if (favoriteIds.size > 0) {
+    startPolling();
+  }
+
   function renderTeamChecklist() {
     teamListEl.innerHTML = allTeams
       .map(
         (team) => `
           <label class="checklist-item">
-            <input type="checkbox" data-team-id="${team.id}" ${favoriteIds.has(team.id) ? 'checked' : ''} />
+            <input type="checkbox" data-team-id="${team.id}" ${favoriteIds.has(team.id) ? 'checked' : ''}>
             ${escapeHtml(team.name_en ?? team.id)}
           </label>
         `
@@ -163,9 +189,11 @@ export async function renderSurpriseTrackerView(container, { worldCupApi }) {
 
 function loadFavorites() {
   try {
-    return JSON.parse(localStorage.getItem(FAVORITES_KEY)) ?? [];
+    const raw = localStorage.getItem(FAVORITES_KEY);
+    if (raw === null) return null; // nunca se guardó nada: primera visita
+    return JSON.parse(raw);
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -194,20 +222,14 @@ function layout() {
           <h2>Seguimiento en vivo</h2>
           <div class="polling-controls">
             <label for="interval-input">Intervalo (segundos)</label>
-            <input id="interval-input" type="number" min="3" value="15" />
+            <input id="interval-input" type="number" min="3" value="15">
             <button type="button" class="btn btn-primary" data-action="start-polling">Iniciar polling</button>
             <button type="button" class="btn btn-ghost" data-action="stop-polling">Detener</button>
           </div>
-          <p id="polling-status" class="polling-status" role="status">Polling detenido.</p>
+          <p id="polling-status" class="polling-status" role="status">Iniciando seguimiento…</p>
           <ul id="tracker-list" class="tracker-list"></ul>
         </section>
       </div>
     </div>
   `;
-}
-
-function escapeHtml(value) {
-  const div = document.createElement('div');
-  div.textContent = value ?? '';
-  return div.innerHTML;
 }

@@ -71,7 +71,7 @@ function markup(mode) {
               <span class="field-icon field-icon--mail">${ICONS.mail}</span>
               Correo electrónico
             </label>
-            <input id="auth-email" type="email" required autocomplete="email" placeholder="nombre@correo.com" class="plain-input" />
+            <input id="auth-email" type="email" required autocomplete="email" placeholder="nombre@correo.com" class="plain-input">
 
             ${
               mode === 'register'
@@ -80,7 +80,7 @@ function markup(mode) {
                     <span class="field-icon field-icon--user">${ICONS.user}</span>
                     Nombre completo
                   </label>
-                  <input id="auth-name" type="text" required autocomplete="name" placeholder="Su nombre" class="plain-input" />
+                  <input id="auth-name" type="text" required autocomplete="name" placeholder="Su nombre" class="plain-input">
                 `
                 : ''
             }
@@ -94,7 +94,7 @@ function markup(mode) {
                 id="auth-password"
                 type="password"
                 required
-                minlength="${mode === 'register' ? '6' : '1'}"
+                minlength="${mode === 'register' ? '8' : '1'}"
                 autocomplete="${mode === 'register' ? 'new-password' : 'current-password'}"
                 placeholder="••••••••"
                 class="plain-input"
@@ -103,6 +103,37 @@ function markup(mode) {
                 ${ICONS.eye}
               </button>
             </div>
+
+            ${
+              mode === 'register'
+                ? `
+                  <ul class="password-requirements" id="password-requirements">
+                    <li data-check="length"><span class="password-requirements__icon"></span> Al menos 8 caracteres</li>
+                    <li data-check="upper"><span class="password-requirements__icon"></span> Una letra mayúscula</li>
+                    <li data-check="number"><span class="password-requirements__icon"></span> Un número</li>
+                  </ul>
+
+                  <label for="auth-password-confirm" class="field-label">
+                    <span class="field-icon field-icon--lock">${ICONS.lock}</span>
+                    Confirmar contraseña
+                  </label>
+                  <div class="password-input">
+                    <input
+                      id="auth-password-confirm"
+                      type="password"
+                      required
+                      autocomplete="new-password"
+                      placeholder="••••••••"
+                      class="plain-input"
+                    />
+                    <button type="button" class="password-input__toggle" data-action="toggle-password-confirm" aria-label="Mostrar contraseña">
+                      ${ICONS.eye}
+                    </button>
+                  </div>
+                  <p class="field-hint" id="password-match-hint"></p>
+                `
+                : ''
+            }
 
             <button type="submit" class="btn btn-brand btn-block" id="auth-submit">
               <span data-field="submit-label">${copy.submitLabel}</span> <span aria-hidden="true" data-field="submit-arrow">→</span>
@@ -183,6 +214,46 @@ function wireForm(container, mode, authService, navigateTo, rerender) {
     toggleButton.setAttribute('aria-label', isHidden ? 'Ocultar contraseña' : 'Mostrar contraseña');
   });
 
+  // Seguridad al crear la cuenta: medidor de fortaleza + confirmación de
+  // contraseña, solo tienen sentido (y solo existen en el markup) en modo
+  // registro.
+  let confirmInput = null;
+  if (mode === 'register') {
+    const requirementsList = form.querySelector('#password-requirements');
+    const matchHint = form.querySelector('#password-match-hint');
+    const toggleConfirmButton = form.querySelector('[data-action="toggle-password-confirm"]');
+    confirmInput = form.querySelector('#auth-password-confirm');
+
+    toggleConfirmButton.addEventListener('click', () => {
+      const isHidden = confirmInput.type === 'password';
+      confirmInput.type = isHidden ? 'text' : 'password';
+      toggleConfirmButton.innerHTML = isHidden ? ICONS.eyeOff : ICONS.eye;
+      toggleConfirmButton.setAttribute('aria-label', isHidden ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    });
+
+    passwordInput.addEventListener('input', () => {
+      const checks = getPasswordChecks(passwordInput.value);
+      Object.entries(checks).forEach(([key, met]) => {
+        const item = requirementsList.querySelector(`[data-check="${key}"]`);
+        item.classList.toggle('password-requirements__item--met', met);
+        item.querySelector('.password-requirements__icon').innerHTML = met ? ICONS.check : '';
+      });
+    });
+
+    const checkMatch = () => {
+      if (!confirmInput.value) {
+        matchHint.textContent = '';
+        matchHint.className = 'field-hint';
+        return;
+      }
+      const matches = confirmInput.value === passwordInput.value;
+      matchHint.textContent = matches ? '✓ Las contraseñas coinciden' : '✕ Las contraseñas no coinciden';
+      matchHint.className = `field-hint ${matches ? 'field-hint--ok' : 'field-hint--error'}`;
+    };
+    confirmInput.addEventListener('input', checkMatch);
+    passwordInput.addEventListener('input', checkMatch);
+  }
+
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const email = form.querySelector('#auth-email').value.trim();
@@ -191,6 +262,21 @@ function wireForm(container, mode, authService, navigateTo, rerender) {
 
     feedback.textContent = '';
     feedback.className = 'form-feedback';
+
+    if (mode === 'register') {
+      const checks = getPasswordChecks(password);
+      if (!Object.values(checks).every(Boolean)) {
+        feedback.textContent = 'Completá los tres requisitos de la contraseña marcados arriba.';
+        feedback.classList.add('form-feedback--error');
+        return;
+      }
+      if (password !== confirmInput.value) {
+        feedback.textContent = 'Las contraseñas no coinciden.';
+        feedback.classList.add('form-feedback--error');
+        return;
+      }
+    }
+
     submitButton.disabled = true;
     submitLabelEl.textContent = COPY[mode].submitLoading;
 
@@ -209,6 +295,26 @@ function wireForm(container, mode, authService, navigateTo, rerender) {
       submitLabelEl.textContent = COPY[mode].submitLabel;
     }
   });
+}
+
+/**
+ * Evalúa la fortaleza de una contraseña combinando longitud y variedad de
+ * categorías de caracteres (minúsculas, mayúsculas, números, símbolos).
+ * No es un análisis criptográfico real — es la validación de UX razonable
+ * para el registro de una cuenta de este proyecto.
+ */
+/**
+ * Devuelve, para una contraseña dada, cuáles de los 3 requisitos visibles
+ * en el checklist del registro ya se cumplen. Se usa tanto para pintar la
+ * lista en vivo mientras el usuario escribe, como para bloquear el envío
+ * del formulario si todavía falta alguno.
+ */
+function getPasswordChecks(password) {
+  return {
+    length: password.length >= 8,
+    upper: /[A-Z]/.test(password),
+    number: /[0-9]/.test(password),
+  };
 }
 
 /**

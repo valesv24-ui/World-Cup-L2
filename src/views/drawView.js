@@ -11,13 +11,14 @@
 
 import { extractTeamsArray } from '../api/worldCupApi.js';
 import { fisherYatesShuffle, chunkInto } from '../utils/fisherYates.js';
+import { escapeHtml } from '../utils/format.js';
 import { themeFor } from '../theme.js';
 
 const DRAW_STORAGE_KEY = 'wc26_crazy_draw';
 const GROUPS_COUNT = 12;
 const TEAMS_PER_GROUP = 4;
 
-export async function renderDrawView(container, { worldCupApi }) {
+export async function renderDrawView(container, { worldCupApi, isStale }) {
   container.innerHTML = layout();
 
   const groupsEl = container.querySelector('#draw-groups');
@@ -50,6 +51,10 @@ export async function renderDrawView(container, { worldCupApi }) {
     statusEl.textContent = 'Cargando los 48 equipos desde la API…';
     try {
       const { data, stale } = await worldCupApi.getTeams();
+      // Si el usuario ya navegó a otra pantalla mientras esperábamos esta
+      // respuesta, este `container` ya no es el de esta vista (ver
+      // router.js) — no seguir tocando ese DOM ajeno.
+      if (isStale()) return;
       teams = extractTeamsArray(data);
       const groups = buildGroups(teams);
       persistDraw(teams, groups);
@@ -60,6 +65,7 @@ export async function renderDrawView(container, { worldCupApi }) {
           ? 'Equipos recargados desde la API y sorteo generado de nuevo.'
           : 'Equipos cargados y sorteo generado.';
     } catch (error) {
+      if (isStale()) return;
       statusEl.textContent = `No se pudo cargar la lista de equipos: ${error.message}`;
     }
   }
@@ -80,7 +86,7 @@ export async function renderDrawView(container, { worldCupApi }) {
                 .map(
                   (team) => `
                     <li>
-                      <img src="${team.flag}" alt="" class="flag" loading="lazy" />
+                      <img src="${escapeHtml(team.flag)}" alt="" class="flag" loading="lazy">
                       ${escapeHtml(team.name_en ?? team.id)}
                     </li>
                   `
@@ -125,10 +131,4 @@ function layout() {
       <div id="draw-groups" class="draw-grid"></div>
     </div>
   `;
-}
-
-function escapeHtml(value) {
-  const div = document.createElement('div');
-  div.textContent = value ?? '';
-  return div.innerHTML;
 }

@@ -11,13 +11,13 @@
 // { ok, ... }, nunca rechaza. Así Promise.all nunca se cae por completo
 // aunque una de las dos búsquedas falle.
 
-import { extractTeamsArray, extractGamesArray, extractGroupsArray } from '../api/worldCupApi.js';
+import { extractTeamsArray, extractGamesArray, extractGroupsArray, findTeamStanding } from '../api/worldCupApi.js';
 import { debounce } from '../utils/debounce.js';
-import { isTrue } from '../utils/format.js';
+import { isTrue, escapeHtml } from '../utils/format.js';
 import { staleBadgeHtml } from '../components/staleBadge.js';
 import { themeFor, colorForGroup } from '../theme.js';
 
-export async function renderHeadToHeadView(container, { worldCupApi }) {
+export async function renderHeadToHeadView(container, { worldCupApi, isStale }) {
   container.innerHTML = layout();
 
   const state = { teamA: null, teamB: null };
@@ -31,9 +31,15 @@ export async function renderHeadToHeadView(container, { worldCupApi }) {
   let allTeams = [];
   try {
     const { data, stale, cachedAt } = await worldCupApi.getTeams();
+    // Si el usuario ya navegó a otra pantalla mientras esperábamos esta
+    // respuesta, `container` ya no es el DOM de esta vista — el
+    // enrutador lo reemplazó por el de la vista nueva. isStale() lo
+    // detecta (ver router.js) para no seguir tocando ese DOM ajeno.
+    if (isStale()) return undefined;
     allTeams = extractTeamsArray(data);
     loadStatusEl.innerHTML = stale ? staleBadgeHtml(cachedAt) : '';
   } catch (error) {
+    if (isStale()) return undefined;
     loadStatusEl.innerHTML = `<p class="form-feedback form-feedback--error">
       No se pudo cargar la lista de equipos para explorar (${escapeHtml(error.message)}). Puede escribir el nombre exacto igual.
     </p>`;
@@ -75,7 +81,7 @@ function setupSearchColumn(container, columnId, worldCupApi, allTeams, onSelect)
         (team) => `
           <li>
             <button type="button" data-id="${team.id}">
-              <img src="${team.flag}" alt="" class="flag" loading="lazy" />
+              <img src="${escapeHtml(team.flag)}" alt="" class="flag" loading="lazy">
               ${escapeHtml(team.name_en ?? team.id)}
               <span class="group-dot" style="--group-color: ${colorForGroup(team.groups)};" title="Grupo ${escapeHtml(team.groups ?? '?')}"></span>
             </button>
@@ -158,8 +164,7 @@ async function safeTeamComparison(worldCupApi, team) {
       worldCupApi.getGroups(),
     ]);
     const groups = extractGroupsArray(groupsResult.data);
-    const groupRow = groups.find((group) => group.group === team.groups);
-    const standing = groupRow?.teams?.find((row) => row.team_id === team.id);
+    const standing = findTeamStanding(groups, team);
     return { ok: true, team, standing, stale: groupsResult.stale };
   } catch (error) {
     return { ok: false, team, error };
@@ -191,7 +196,7 @@ async function runComparison(container, worldCupApi, teamA, teamB) {
         matchHtml = `
           <div class="direct-match">
             <h3>Partido entre ambos</h3>
-            <p>${escapeHtml(directMatch.home_team_name_en)} ${directMatch.home_score} - ${directMatch.away_score} ${escapeHtml(
+            <p>${escapeHtml(directMatch.home_team_name_en)} ${escapeHtml(String(directMatch.home_score))} - ${escapeHtml(String(directMatch.away_score))} ${escapeHtml(
               directMatch.away_team_name_en
             )}</p>
             <p>${isTrue(directMatch.finished) ? 'Finalizado' : 'Aún no se juega'}</p>
@@ -228,7 +233,7 @@ function renderColumn(result) {
   const groupColor = colorForGroup(team.groups);
   return `
     <div class="comparison-column">
-      <img src="${team.flag}" alt="" class="flag flag--large" />
+      <img src="${escapeHtml(team.flag)}" alt="" class="flag flag--large">
       <h3>${escapeHtml(team.name_en ?? team.id)}</h3>
       <span class="group-badge" style="--group-color: ${groupColor};" title="Grupo ${escapeHtml(team.groups ?? '?')}">
         Grupo ${escapeHtml(team.groups ?? '—')}
@@ -249,14 +254,14 @@ function layout() {
         <section>
           <label for="search-a">Equipo A</label>
           <p class="input-hint">Solo participan los 48 equipos clasificados al Mundial 2026.</p>
-          <input id="search-a" type="search" placeholder="Escriba o elija de la lista…" class="search-input" />
+          <input id="search-a" type="search" placeholder="Escriba o elija de la lista…" class="search-input">
           <p id="team-count-a" class="team-count"></p>
           <ul id="suggestions-a" class="suggestions-list"></ul>
         </section>
         <section>
           <label for="search-b">Equipo B</label>
           <p class="input-hint">Solo participan los 48 equipos clasificados al Mundial 2026.</p>
-          <input id="search-b" type="search" placeholder="Escriba o elija de la lista…" class="search-input" />
+          <input id="search-b" type="search" placeholder="Escriba o elija de la lista…" class="search-input">
           <p id="team-count-b" class="team-count"></p>
           <ul id="suggestions-b" class="suggestions-list"></ul>
         </section>
@@ -267,10 +272,4 @@ function layout() {
       </div>
     </div>
   `;
-}
-
-function escapeHtml(value) {
-  const div = document.createElement('div');
-  div.textContent = value ?? '';
-  return div.innerHTML;
 }

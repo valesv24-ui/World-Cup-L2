@@ -52,5 +52,28 @@ export function extractGamesArray(rawData) {
 
 export function extractGroupsArray(rawData) {
   if (Array.isArray(rawData)) return rawData;
-  return rawData?.groups ?? [];
+  if (Array.isArray(rawData?.groups)) return rawData.groups;
+  if (Array.isArray(rawData?.data)) return rawData.data;
+  return [];
+}
+
+/**
+ * Busca, dentro del arreglo de 12 grupos, la fila de posiciones de un
+ * equipo puntual. Se escribe "a la defensiva" (probando varios nombres de
+ * campo posibles y comparando ids como texto) porque distintas respuestas
+ * de esta API pública no siempre usan exactamente los mismos nombres de
+ * campo entre endpoints — así que en vez de asumir un único nombre exacto,
+ * se cubren las variantes razonables.
+ */
+export function findTeamStanding(groups, team) {
+  const groupLetter = team?.groups;
+  const teamId = String(team?.id ?? '');
+
+  const matchingGroup = groups.find((group) => {
+    const letter = group.group ?? group.name ?? group.letter ?? group.id;
+    return letter === groupLetter;
+  });
+
+  const teamsInGroup = matchingGroup?.teams ?? matchingGroup?.standings ?? [];
+  return teamsInGroup.find((row) => String(row.team_id ?? row.id) === teamId);
 }

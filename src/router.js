@@ -19,6 +19,14 @@ let currentCleanup = null;
 let appContext = null;
 let appContainer = null;
 
+// Cada llamada a renderCurrentRoute() "reclama" un número de generación
+// nuevo. Si el usuario navega otra vez mientras una vista todavía está
+// esperando datos (por ejemplo, a mitad de un await a la API), la
+// generación cambia; cuando esa vista vieja por fin resuelve su promesa,
+// compara su número contra el actual y, si ya no coincide, se sabe stale
+// y no debe tocar el DOM (que para entonces ya pertenece a otra vista).
+let renderGeneration = 0;
+
 export function registerRoute(hash, viewFn) {
   routes.set(hash, viewFn);
 }
@@ -37,6 +45,9 @@ export function navigateTo(hash) {
 }
 
 async function renderCurrentRoute() {
+  const myGeneration = ++renderGeneration;
+  const isStale = () => myGeneration !== renderGeneration;
+
   const hash = location.hash || '#/menu';
   const requiresAuth = hash !== '#/login';
 
@@ -52,12 +63,13 @@ async function renderCurrentRoute() {
   }
 
   const view = routes.get(hash) ?? routes.get('#/menu');
+  const viewContext = { ...appContext, isStale };
 
   if (!requiresAuth) {
     unmountAppShell();
     appContainer.innerHTML = '';
-    const cleanup = await view(appContainer, appContext);
-    currentCleanup = typeof cleanup === 'function' ? cleanup : null;
+    const cleanup = await view(appContainer, viewContext);
+    applyCleanup(cleanup, isStale);
     return;
   }
 
@@ -67,7 +79,21 @@ async function renderCurrentRoute() {
   shell.setHeader(theme.label, theme.description);
 
   shell.contentSlot.innerHTML = '';
-  const cleanup = await view(shell.contentSlot, appContext);
+  const cleanup = await view(shell.contentSlot, viewContext);
+  applyCleanup(cleanup, isStale);
+}
+
+/**
+ * Si para cuando la vista terminó de cargar ya arrancó una navegación más
+ * nueva, esta vista quedó "huérfana": se descarta su cleanup ejecutándolo
+ * de una vez (por ejemplo, para detener un polling que alcanzó a
+ * programarse) en vez de guardarlo como si fuera el activo.
+ */
+function applyCleanup(cleanup, isStale) {
+  if (isStale()) {
+    if (typeof cleanup === 'function') cleanup();
+    return;
+  }
   currentCleanup = typeof cleanup === 'function' ? cleanup : null;
 }
 

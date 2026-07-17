@@ -12,8 +12,53 @@ import { defineConfig } from 'vite';
 // —un proceso de Node, no un navegador— quien reenvía la petición a la API
 // real. CORS es una restricción que solo aplican los navegadores, así que
 // ese segundo salto (Vite → worldcup26.ir) no la sufre.
+
+/**
+ * Inyección de fallos SOLO para desarrollo (nunca se empaqueta en un build
+ * de producción, porque vite.config.js no forma parte del bundle). No es un
+ * botón dentro de la app: se dispara agregando "?__force=401" (o 429 / 500)
+ * a cualquier petición hacia /wc26-api, típicamente desde la pestaña
+ * Console de DevTools. Como el middleware corre en el servidor de Vite
+ * ANTES de reenviar nada a la API real, el navegador recibe una respuesta
+ * HTTP genuina con ese código de estado (visible en Network), sin que el
+ * JavaScript de la app finja nada por dentro.
+ */
+function faultInjectionPlugin() {
+  const FORCEABLE_STATUSES = new Set([401, 429, 500]);
+  const MESSAGES = {
+    401: 'Fallo inyectado a propósito (401) desde el proxy de desarrollo, para practicar el modal de sesión expirada.',
+    429: 'Fallo inyectado a propósito (429) desde el proxy de desarrollo, para practicar el backoff exponencial.',
+    500: 'Fallo inyectado a propósito (500) desde el proxy de desarrollo, para practicar el backoff exponencial.',
+  };
+
+  return {
+    name: 'wc26-fault-injection',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (!req.url.startsWith('/wc26-api')) {
+          next();
+          return;
+        }
+
+        const url = new URL(req.url, 'http://localhost');
+        const forced = Number(url.searchParams.get('__force'));
+
+        if (!FORCEABLE_STATUSES.has(forced)) {
+          next();
+          return;
+        }
+
+        res.statusCode = forced;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ message: MESSAGES[forced] }));
+      });
+    },
+  };
+}
+
 export default defineConfig({
   base: './',
+  plugins: [faultInjectionPlugin()],
   server: {
     proxy: {
       '/wc26-api': {

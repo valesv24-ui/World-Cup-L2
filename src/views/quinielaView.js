@@ -9,13 +9,13 @@
 // real solo se actualiza cuando /get/games finalmente responde.
 
 import { extractGamesArray } from '../api/worldCupApi.js';
-import { isTrue, describeMatchSide } from '../utils/format.js';
+import { isTrue, describeMatchSide, escapeHtml } from '../utils/format.js';
 import { staleBadgeHtml } from '../components/staleBadge.js';
 import { themeFor } from '../theme.js';
 
 const PREDICTIONS_KEY = 'wc26_quiniela_predictions';
 
-export async function renderQuinielaView(container, { worldCupApi }) {
+export async function renderQuinielaView(container, { worldCupApi, isStale }) {
   container.innerHTML = layout();
 
   const pendingListEl = container.querySelector('#pending-matches');
@@ -31,11 +31,16 @@ export async function renderQuinielaView(container, { worldCupApi }) {
   // 2) Solo después se intenta traer los partidos reales (puede fallar).
   try {
     const { data, stale, cachedAt } = await worldCupApi.getGames();
+    // Si el usuario ya navegó a otra pantalla mientras esperábamos esta
+    // respuesta, este `container` ya no es el de esta vista (ver
+    // router.js) — no seguir tocando ese DOM ajeno.
+    if (isStale()) return undefined;
     latestGames = extractGamesArray(data);
     loadStatusEl.innerHTML = stale ? staleBadgeHtml(cachedAt) : '';
     renderPendingMatches(latestGames);
     renderResolvedComparisons(latestGames);
   } catch (error) {
+    if (isStale()) return undefined;
     loadStatusEl.innerHTML = `<p class="form-feedback form-feedback--error">
       No se pudo cargar la lista de partidos (${escapeHtml(error.message)}). Se muestran solo las predicciones ya guardadas.
     </p>`;
@@ -100,9 +105,9 @@ export async function renderQuinielaView(container, { worldCupApi }) {
               return `
                 <li class="pending-row">
                   <span>${escapeHtml(homeLabel)} vs ${escapeHtml(awayLabel)}</span>
-                  <input type="number" min="0" class="score-input" data-match="${game.id}" data-side="home" value="${existing?.home ?? ''}" placeholder="0" />
+                  <input type="number" min="0" class="score-input" data-match="${game.id}" data-side="home" value="${existing?.home ?? ''}" placeholder="0">
                   <span>-</span>
-                  <input type="number" min="0" class="score-input" data-match="${game.id}" data-side="away" value="${existing?.away ?? ''}" placeholder="0" />
+                  <input type="number" min="0" class="score-input" data-match="${game.id}" data-side="away" value="${existing?.away ?? ''}" placeholder="0">
                   <button type="button" class="btn btn-secondary btn-small" data-save="${game.id}">Guardar predicción</button>
                 </li>
               `;
@@ -221,10 +226,4 @@ function layout() {
       </div>
     </div>
   `;
-}
-
-function escapeHtml(value) {
-  const div = document.createElement('div');
-  div.textContent = value ?? '';
-  return div.innerHTML;
 }

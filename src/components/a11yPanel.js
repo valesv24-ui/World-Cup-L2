@@ -81,7 +81,7 @@ export function mountA11yControl(root) {
         </div>
 
         <label class="a11y-toggle">
-          <input type="checkbox" id="a11y-contrast" />
+          <input type="checkbox" id="a11y-contrast">
           Alto contraste
         </label>
       </div>

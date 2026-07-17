@@ -19,8 +19,10 @@ sesión expirada sin recargar la página.
 ```
 mundial26-suite/
 ├── index.html
-├── vite.config.js        # proxy de desarrollo (evita bloqueo CORS de la API)
+├── vite.config.js        # proxy de desarrollo (CORS) + inyección de fallos 401/429/500
 ├── README.md
+├── public/
+│   └── robots.txt
 └── src/
     ├── main.js            # composición raíz
     ├── router.js          # enrutador por hash, sin recargas
@@ -34,7 +36,7 @@ mundial26-suite/
     ├── utils/
     │   ├── debounce.js    # debounce por closures
     │   ├── fisherYates.js # algoritmo Fisher-Yates + reparto en grupos
-    │   └── format.js      # sumas de goles, fechas, isTrue(), etc.
+    │   └── format.js      # sumas de goles, fechas, isTrue(), escapeHtml()
     ├── components/
     │   ├── icons.js          # íconos SVG compartidos (Lucide, licencia ISC)
     │   ├── appShell.js       # menú horizontal + barra superior persistentes
@@ -58,6 +60,10 @@ mundial26-suite/
 - Registro y login reales contra la API (`POST /auth/register`, `POST /auth/authenticate`)
 - Token JWT en `localStorage`, agregado como `Authorization: Bearer` en cada petición
 - Sesión persiste al recargar la página
+- Al crear la cuenta: checklist en vivo de 3 requisitos (mínimo 8
+  caracteres, una mayúscula, un número) que se marcan con ✓ a medida que
+  se escribe, más campo de confirmación — el registro no se envía hasta
+  que los tres estén cumplidos y las contraseñas coincidan
 
 **Arquitectura de resiliencia (compartida por los 5 subproyectos)**
 - `async/await` exclusivo — sin un solo `.then()`/`.catch()` en todo el proyecto
@@ -84,7 +90,7 @@ mundial26-suite/
 | Dispositivo | Comportamiento |
 |---|---|
 | Escritorio (> 780px) | Menú horizontal completo con texto, grillas en varias columnas |
-| Tablet / Móvil (≤ 780px) | Menú se compacta a solo íconos, contenido en una columna, todo el fondo decorativo del login (balones, patrón, vista previa borrosa) se oculta |
+| Tablet / Móvil (≤ 780px) | La barra superior pasa a dos filas: logo + accesibilidad + perfil arriba, y los 6 accesos (con solo ícono, sin texto) en su propia fila con ancho completo debajo; el fondo decorativo del login (balones, patrón, vista previa borrosa) se oculta |
 
 ## 🎨 Sistema de diseño
 
@@ -110,6 +116,14 @@ y, al iniciar sesión con éxito, un pequeño estallido de confetti (también
 generado con CSS/JS, sin imágenes) antes de entrar al dashboard.
 
 ## ♿ Accesibilidad
+
+Un análisis con Lighthouse detectó que `--color-text-muted` y
+`--color-warning-text` no llegaban al contraste mínimo de WCAG AA (4.5:1)
+cuando el texto queda directamente sobre el fondo de la página (sí
+pasaban sobre las tarjetas blancas, pero no sobre el gris del fondo). Se
+verificó con la fórmula de luminancia relativa de WCAG y se oscurecieron
+ambos colores — ahora dan 6.7:1 y 6.3:1 respectivamente contra el fondo,
+bien por encima del mínimo, y siguen dando buen contraste sobre blanco.
 
 Botón "Aa" en la barra superior (y también en el login, arriba a la
 derecha) que abre un panel con tres controles, todos persistentes en
@@ -159,16 +173,87 @@ desarrollo, para evitar un bloqueo de CORS del lado de la API.
   Fisher-Yates en 12 grupos ficticios, y "Repetir sorteo" no vuelve a llamar
   la API.
 
+## 🧭 Enrutador: navegar mientras una vista todavía está cargando
+
+Cada vista es `async` y suele empezar con un `await` a la API antes de
+tocar el DOM. Si el usuario cambia de pantalla ANTES de que esa petición
+responda, el enrutador ya reemplazó el contenido por la vista nueva — y
+sin protección, la vista vieja seguiría ejecutándose después de su
+`await` e intentaría buscar elementos que ya no existen
+(`Cannot read properties of null (reading 'addEventListener')`).
+
+`router.js` lleva un número de generación que se incrementa en cada
+navegación. Cada vista recibe una función `isStale()` en su contexto; si
+al terminar su `await` la generación ya cambió, la vista simplemente
+retorna sin tocar el DOM (y si de todos modos alcanzó a devolver una
+función de limpieza — por ejemplo el polling de Seguidor de Sorpresas—,
+el enrutador la ejecuta de inmediato en vez de dejarla corriendo
+huérfana). Se verificó con una prueba que simula justo esa carrera
+(navegar a otra pantalla mientras `/get/teams` todavía no responde): cero
+errores, y la pantalla final es la correcta.
+
+## 🛡️ Protección contra XSS
+
+El ataque que más le compete a una SPA como esta (sin backend propio) es
+**Cross-Site Scripting (XSS)**: la app renderiza, en 5 subproyectos
+distintos, nombres de equipo, etiquetas de partido y URLs de bandera que
+vienen de una API externa — y esos datos no son 100% confiables por
+definición, así que se tratan siempre como texto, nunca como HTML válido.
+
+- `escapeHtml()` vive en un solo lugar (`src/utils/format.js`) y lo
+  importan los 6 archivos que renderizan datos externos, en vez de tener
+  6 copias sueltas que se podrían desincronizar.
+- Escapa `&`, `<`, `>`, `"` y `'` — las comillas importan porque varias
+  banderas se insertan dentro de un atributo (`src="${...}"`), y una
+  comilla sin escapar ahí alcanza para "salirse" del atributo e inyectar
+  un manejador de evento (`onerror="..."`) sin necesidad de ningún
+  `<script>` literal.
+- Se verificó con una prueba real: se simuló una respuesta de API con un
+  nombre de equipo conteniendo `<script>` y una bandera diseñada para
+  romper el atributo `src`, y en ningún caso se ejecutó código.
+- El único campo de **entrada del propio usuario** que se muestra en
+  pantalla (el nombre elegido al registrarse) también pasa por
+  `escapeHtml()` en el saludo de Inicio, o se inserta con `textContent`
+  (que nunca interpreta HTML) en el menú de perfil — cualquiera de los
+  dos caminos es seguro.
+- CSRF no aplica a esta arquitectura: la API usa un token JWT que viaje
+  en el encabezado `Authorization`, no en una cookie — un sitio malicioso
+  no puede forzar al navegador a adjuntar ese encabezado automáticamente,
+  a diferencia de lo que sí pasaría con credenciales basadas en cookies.
+
 ## 🧪 Cómo probar los errores de red (401 / 429 / 500) desde DevTools
 
-Esta app no trae un botón para fingir errores — se reproducen condiciones
-reales desde el inspector del navegador:
+Esta app no trae ningún botón para fingir errores dentro de su propio
+código — pero el proxy de desarrollo de `vite.config.js` sí incluye un
+interruptor de fallos pensado exactamente para esto. Vive en
+`vite.config.js` (nunca se empaqueta en producción) y solo responde a una
+señal que se manda a mano desde el inspector, nunca por sí solo:
 
-- **401**: DevTools → Application → Local Storage → editar el `token` dentro
-  de `wc26_session` → recargar (F5) → entrar a cualquier subproyecto.
-- **429**: en la pestaña Console, con sesión iniciada: `for (let i = 0; i < 150; i++) fetch('/wc26-api/get/teams');`
-- **500 / fallo de red**: DevTools → Network → Request blocking → bloquear
-  `**/wc26-api/*` → recargar datos dentro de un subproyecto.
+- En la pestaña **Console** de DevTools, con sesión iniciada, pegue
+  cualquiera de estos (cambia solo el número al final):
+  ```js
+  fetch('/wc26-api/get/teams?__force=401');
+  fetch('/wc26-api/get/teams?__force=429');
+  fetch('/wc26-api/get/teams?__force=500');
+  ```
+- El servidor de Vite responde de inmediato con ese código de estado real
+  (visible en la pestaña Network, con cuerpo JSON incluido) sin haber
+  tocado siquiera a `worldcup26.ir` — así que funciona igual sin importar
+  si la API real está arriba o no en ese momento.
+- Después de eso, entre a cualquier subproyecto (o dispare de nuevo la
+  petición real de esa vista): como `ApiClient` no distingue entre un 401
+  "real" y uno inyectado por el proxy, el modal de sesión expirada o el
+  backoff con countdown se activan exactamente igual.
+
+Alternativas igual de válidas, sin depender del proxy (por si se quiere
+demostrar la condición contra la API real de verdad):
+
+- **401 real**: DevTools → Application → Local Storage → editar el `token`
+  dentro de `wc26_session` → recargar (F5) → entrar a cualquier subproyecto.
+- **429 real**: en la pestaña Console, con sesión iniciada:
+  `for (let i = 0; i < 150; i++) fetch('/wc26-api/get/teams');`
+- **500 / fallo de red real**: DevTools → Network → Request blocking →
+  bloquear `**/wc26-api/*` → recargar datos dentro de un subproyecto.
 
 ## 📚 Tecnologías
 

@@ -8,13 +8,13 @@
 // excluye sin producir NaN (ver sumPendingSafe en utils/format.js).
 
 import { extractTeamsArray, extractGamesArray } from '../api/worldCupApi.js';
-import { sumGoalsForTeam, sumPendingSafe } from '../utils/format.js';
+import { sumGoalsForTeam, sumPendingSafe, escapeHtml } from '../utils/format.js';
 import { staleBadgeHtml } from '../components/staleBadge.js';
 import { themeFor } from '../theme.js';
 
 const MAX_TEAMS = 11;
 
-export async function renderDreamTeamView(container, { worldCupApi }) {
+export async function renderDreamTeamView(container, { worldCupApi, isStale }) {
   container.innerHTML = layout();
 
   const searchInput = container.querySelector('#team-search');
@@ -31,10 +31,15 @@ export async function renderDreamTeamView(container, { worldCupApi }) {
 
   try {
     const { data, stale, cachedAt } = await worldCupApi.getTeams();
+    // Si el usuario ya navegó a otra pantalla mientras esperábamos esta
+    // respuesta, este `container` ya no es el de esta vista (ver
+    // router.js) — no seguir tocando ese DOM ajeno.
+    if (isStale()) return undefined;
     allTeams = extractTeamsArray(data);
     staleNotice = stale ? staleBadgeHtml(cachedAt) : '';
   } catch (error) {
-    loadErrorEl.innerHTML = `No se pudo cargar la lista de equipos: ${error.message}`;
+    if (isStale()) return undefined;
+    loadErrorEl.textContent = `No se pudo cargar la lista de equipos: ${error.message}`;
   }
 
   renderAvailableTeams(allTeams, '');
@@ -64,7 +69,7 @@ export async function renderDreamTeamView(container, { worldCupApi }) {
               (team) => `
                 <li>
                   <button type="button" class="team-pill" data-team-id="${team.id}" ${atLimit ? 'disabled' : ''}>
-                    <img src="${team.flag}" alt="" class="flag" loading="lazy" />
+                    <img src="${escapeHtml(team.flag)}" alt="" class="flag" loading="lazy">
                     ${escapeHtml(team.name_en ?? team.name_fa ?? team.id)}
                   </button>
                 </li>
@@ -119,7 +124,7 @@ export async function renderDreamTeamView(container, { worldCupApi }) {
             .map(
               ({ team, goals, staleNotice: rowStale }) => `
                 <li class="selected-row">
-                  <img src="${team.flag}" alt="" class="flag" loading="lazy" />
+                  <img src="${escapeHtml(team.flag)}" alt="" class="flag" loading="lazy">
                   <span class="selected-row__name">${escapeHtml(team.name_en ?? team.id)}</span>
                   <span class="selected-row__goals">
                     ${goals === null ? '<em class="pending">goles pendientes de calcular</em>' : `${goals} goles`}
@@ -149,7 +154,7 @@ function layout() {
       <div class="two-columns">
         <section>
           <h2>Equipos disponibles</h2>
-          <input id="team-search" type="search" placeholder="Buscar equipo…" class="search-input" />
+          <input id="team-search" type="search" placeholder="Buscar equipo…" class="search-input">
           <p id="limit-message" class="limit-message" hidden>
             Ya seleccionó 11 equipos. Quite alguno para agregar otro.
           </p>
@@ -164,10 +169,4 @@ function layout() {
       </div>
     </div>
   `;
-}
-
-function escapeHtml(value) {
-  const div = document.createElement('div');
-  div.textContent = value ?? '';
-  return div.innerHTML;
 }

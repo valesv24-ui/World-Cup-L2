@@ -6,16 +6,14 @@
 // los resultados más recientes, y los 48 equipos clasificados.
 
 import { extractTeamsArray, extractGamesArray } from '../api/worldCupApi.js';
-import { isTrue, describeMatchSide, formatDateEs } from '../utils/format.js';
+import { isTrue, describeMatchSide, formatDateEs, escapeHtml } from '../utils/format.js';
 import { staleBadgeHtml } from '../components/staleBadge.js';
 
-export async function renderMenuView(container, { authService, worldCupApi }) {
+export async function renderMenuView(container, { authService, worldCupApi, isStale }) {
+  const firstName = (authService.currentUser?.name ?? 'jugador/a').trim().split(' ')[0];
   container.innerHTML = `
     <div class="content-panel">
-      <p class="menu-welcome">
-        Hola, ${escapeHtml(authService.currentUser?.name ?? 'jugador/a')} 👋 — un vistazo rápido al
-        Mundial 2026. Elegí un subproyecto en el menú de arriba para jugar.
-      </p>
+      <p class="menu-welcome">Hola, ${escapeHtml(firstName)} 👋</p>
 
       <div id="games-load-status"></div>
 
@@ -51,6 +49,10 @@ export async function renderMenuView(container, { authService, worldCupApi }) {
 
   try {
     const { data, stale, cachedAt } = await worldCupApi.getGames();
+    // Si el usuario ya navegó a otra pantalla mientras esperábamos esta
+    // respuesta, este `container` ya no es el de esta vista (ver
+    // router.js) — no seguir tocando ese DOM ajeno.
+    if (isStale()) return undefined;
     const games = extractGamesArray(data);
     loadStatusEl.innerHTML = stale ? staleBadgeHtml(cachedAt) : '';
 
@@ -71,7 +73,7 @@ export async function renderMenuView(container, { authService, worldCupApi }) {
             .map(
               (game) => `
                 <li class="home-match-row">
-                  <span>${escapeHtml(describeMatchSide(game, 'home'))} <strong>${game.home_score}-${game.away_score}</strong> ${escapeHtml(describeMatchSide(game, 'away'))}</span>
+                  <span>${escapeHtml(describeMatchSide(game, 'home'))} <strong>${escapeHtml(String(game.home_score))}-${escapeHtml(String(game.away_score))}</strong> ${escapeHtml(describeMatchSide(game, 'away'))}</span>
                   <span class="home-match-row__date">${escapeHtml(formatDateEs(game.local_date))}</span>
                 </li>
               `
@@ -92,6 +94,7 @@ export async function renderMenuView(container, { authService, worldCupApi }) {
             )
             .join('');
   } catch (error) {
+    if (isStale()) return undefined;
     const message = `<li class="empty-hint">No se pudo cargar (${escapeHtml(error.message)}).</li>`;
     upcomingEl.innerHTML = message;
     recentEl.innerHTML = message;
@@ -99,6 +102,7 @@ export async function renderMenuView(container, { authService, worldCupApi }) {
 
   try {
     const { data, stale, cachedAt } = await worldCupApi.getTeams();
+    if (isStale()) return undefined;
     const teams = extractTeamsArray(data);
     const staleNotice = stale ? staleBadgeHtml(cachedAt) : '';
 
@@ -108,19 +112,14 @@ export async function renderMenuView(container, { authService, worldCupApi }) {
         .map(
           (team) => `
             <div class="team-chip" title="${escapeHtml(team.name_en ?? team.id)}">
-              <img src="${team.flag}" alt="" class="flag" loading="lazy" />
+              <img src="${escapeHtml(team.flag)}" alt="" class="flag" loading="lazy">
               <span>${escapeHtml(team.name_en ?? team.id)}</span>
             </div>
           `
         )
         .join('');
   } catch (error) {
+    if (isStale()) return undefined;
     teamsGridEl.innerHTML = `<p class="empty-hint">No se pudo cargar la lista de equipos (${escapeHtml(error.message)}).</p>`;
   }
-}
-
-function escapeHtml(value) {
-  const div = document.createElement('div');
-  div.textContent = value ?? '';
-  return div.innerHTML;
 }

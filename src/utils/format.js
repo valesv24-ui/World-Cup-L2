@@ -47,6 +47,29 @@ export function isTrue(value) {
 }
 
 /**
+ * Escapa texto antes de insertarlo en HTML por interpolación de plantilla
+ * — la app renderiza nombres de equipo, etiquetas de partido y URLs de
+ * bandera que vienen de una API externa (o, en el caso del nombre de
+ * usuario, del propio formulario de registro), así que se tratan siempre
+ * como datos no confiables, nunca como HTML válido (ataque de tipo XSS).
+ *
+ * Se implementa con reemplazos explícitos (no con el truco de
+ * `div.textContent = valor; return div.innerHTML`) porque ese truco NO
+ * escapa comillas dobles: una comilla sin escapar dentro de un atributo
+ * como `src="${valor}"` alcanza para "salirse" del atributo e inyectar
+ * código igual. Escapando también `"` y `'` queda seguro tanto para texto
+ * suelto como para valores dentro de atributos entre comillas.
+ */
+export function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
  * Para partidos de eliminación directa cuyo rival todavía no está
  * definido, la API entrega home_team_id/away_team_id = "0" y en su lugar
  * describe la posición con home_team_label/away_team_label (por ejemplo
